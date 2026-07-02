@@ -1,0 +1,72 @@
+# PHAROS独自カテゴリー -> PP-DocLayoutV3カテゴリーへのマッピング
+#
+# 左側 (your_id) = あなたが作ったbbox_gt/*.txtの先頭の数字
+# 右側 (target_label) = PP-DocLayoutV3 (元のinference.ymlのlabel_list) のラベル名
+#   既存ラベルに存在しないものは "document_info" のみ。これは新規追加する。
+#   "Caption" は既存の "figure_title" で代用する（figure/table/chart共通のキャプションとして扱う）。
+#   "Formula" はブロック単位の数式注釈とみなし "display_formula" に対応させる。
+#     もし行内数式 (inline_formula) を別途区別したいデータがあるなら、
+#     アノテーション時点でidをもう1つ切るか、後述のNOTEを参照。
+#
+# 微妙な場合のデフォルト: "text" (default_target で指定)
+
+default_target: text
+
+your_category_names:
+  0: Text
+  1: Header
+  2: Paragraph Title
+  3: Image
+  4: Table
+  5: Formula
+  6: Page Number
+  7: Document Title
+  8: Footnote
+  9: Caption
+  10: Document Info
+
+mapping:
+  0: text
+  1: header
+  2: paragraph_title
+  3: image
+  4: table
+  5: display_formula
+  6: number
+  7: doc_title
+  8: footnote
+  9: figure_title
+  10: document_info   # 新規クラス。base_label_listに無いので追加される。
+
+# 元のPP-DocLayoutV3 label_list (inference.ymlより, 25クラス)
+base_label_list:
+  - abstract
+  - algorithm
+  - aside_text
+  - chart
+  - content
+  - display_formula
+  - doc_title
+  - figure_title
+  - footer
+  - footer_image
+  - footnote
+  - formula_number
+  - header
+  - header_image
+  - image
+  - inline_formula
+  - number
+  - paragraph_title
+  - reference
+  - reference_content
+  - seal
+  - table
+  - text
+  - vertical_text
+  - vision_footnote
+
+# 新規追加するクラス（base_label_listに無いものは自動的にここに追加される想定だが、
+# 明示しておく。final label listは base_label_list + new_labels の順で固定する）
+new_labels:
+  - document_info

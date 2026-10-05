@@ -7,11 +7,14 @@ from pathlib import Path
 # --------------------------------------------------
 
 TOTAL = 360
-ELIA_RATIO = 0.3                       # 3割 = 108枚, 残り7割 = 252枚
+ELIA_RATIO = 0.12
 
 ELIA_ROOT = Path("/media/StorageServer/PHAROS/pharos_elia_text")
 EPIROTIC_ROOT = Path("/media/StorageServer/PHAROS/pharos_epirotic")
 EPIROTIC_SUBDIRS = [f"{i:03d}" for i in range(0, 11)]   # 000 〜 010
+
+# 既に選ばれた epirotic のファイル一覧（ここにあるハッシュ名は除外）
+EPIROTIC_EXCLUDE_TXT = EPIROTIC_ROOT / "selected.txt"
 
 # コピー先とパス一覧の保存先
 OUTPUT_DIR = Path("/media/StorageServer/PHAROS/sample_360")
@@ -44,6 +47,26 @@ def is_real_jpeg(path: Path) -> bool:
         return False
 
 
+def load_excluded_hashes(txt_path: Path) -> set:
+    """
+    selected.txt の各行
+      1 - nchr - 000 - 00ddc7cc8e470685322d52126083e5a66c9ea7ef - 0001
+    から、40 桁のハッシュ名（ファイル名）を取り出す
+    """
+    excluded = set()
+    if not txt_path.is_file():
+        print(f"WARNING | 除外リストが見つかりません: {txt_path}")
+        return excluded
+
+    with open(txt_path, encoding="utf-8") as f:
+        for line in f:
+            for part in line.split("-"):
+                part = part.strip()
+                if len(part) == 40 and all(c in "0123456789abcdef" for c in part.lower()):
+                    excluded.add(part.lower())
+    return excluded
+
+
 def collect_groups_elia():
     """
     グループ = 各タイトルのフォルダ（例: ΑΘΗΝΑ_000100-20_492311）
@@ -60,20 +83,27 @@ def collect_groups_elia():
     return groups
 
 
-def collect_groups_epirotic():
+def collect_groups_epirotic(excluded: set):
     """
     グループ = 000 〜 010
     ドキュメント = ハッシュ名のフォルダ（例: ff9657414fe3...）
+    excluded に含まれるハッシュ名のフォルダは候補から外す
     """
     groups = {}
+    skipped = 0
     for sub in EPIROTIC_SUBDIRS:
         group_dir = EPIROTIC_ROOT / sub
-        docs = [
-            d for d in list_subdirs(group_dir)
-            if (d / "pages").is_dir()
-        ]
+        docs = []
+        for d in list_subdirs(group_dir):
+            if not (d / "pages").is_dir():
+                continue
+            if d.name.lower() in excluded:
+                skipped += 1
+                continue
+            docs.append(d)
         if docs:
             groups[sub] = docs
+    print(f"EPIROTIC: selected.txt により {skipped} PDF を除外")
     return groups
 
 
@@ -154,7 +184,9 @@ n_epirotic = TOTAL - n_elia
 
 print("Scanning folders ...")
 elia_groups = collect_groups_elia()
-epirotic_groups = collect_groups_epirotic()
+excluded_hashes = load_excluded_hashes(EPIROTIC_EXCLUDE_TXT)
+print(f"selected.txt: {len(excluded_hashes)} 件のファイル名を読み込み")
+epirotic_groups = collect_groups_epirotic(excluded_hashes)
 
 print(
     f"ELIA: {len(elia_groups)} groups, "
